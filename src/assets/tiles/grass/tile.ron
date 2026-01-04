@@ -1,0 +1,6 @@
+(
+    name: "grass",
+    tint: (255, 255, 255, 255),
+
+    animation: None,
+)
