@@ -16,5 +16,4 @@ serde = { version = "1.0.228", features = ["derive"] }
 walkdir = "2.5.0"
 wgpu = "27.0.1"
 winit = "0.30.12"
-ecs_derive = { path = "ecs_derive" }
 ecs_core = { version = "0.1.0", path = "ecs_core" }

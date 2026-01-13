@@ -10,7 +10,6 @@ use crate::{
 
 pub struct ChunkMeshes {
     meshes: BTreeMap<(i64, i64), ChunkMesh>,
-    pub time_buffer: Buffer,
     bind_group: BindGroup,
     texture_registry: Arc<TextureRegistry>,
 }
@@ -23,46 +22,6 @@ impl ChunkMeshes {
         scale: f32,
     ) -> anyhow::Result<Self> {
         let mut meshes: BTreeMap<(i64, i64), ChunkMesh> = BTreeMap::new();
-
-        let tile_assets = load_blocks(Path::new("src/assets/tiles"))?;
-
-        let texture_registry = Arc::new(
-            TextureRegistry::builder()
-                .register_tiles(tile_assets)?
-                .build(graphics)?,
-        );
-
-        let uv_buffer = graphics
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("UV Rects Buffer"),
-                contents: bytemuck::cast_slice(&texture_registry.uvs.clone()),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            });
-
-        let time_buffer = graphics.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Time Buffer"),
-            size: 4,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let bind_group = graphics
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Animation Bind Group"),
-                layout: &graphics.animation_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: uv_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: time_buffer.as_entire_binding(),
-                    },
-                ],
-            });
 
         let size_i64 = chunks_radius as i64;
 

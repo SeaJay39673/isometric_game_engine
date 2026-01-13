@@ -4,8 +4,7 @@ use anyhow::anyhow;
 
 use crate::{
     assets::TileAsset,
-    graphics::{Atlas, AtlasBuilder, AtlasImage, Graphics, TileTextureHandle, UVRect},
-    map::Tile,
+    graphics::{Atlas, AtlasBuilder, AtlasImage, Graphics, Tile, TileTextureHandle, UVRect},
 };
 
 pub struct TextureRegistry {

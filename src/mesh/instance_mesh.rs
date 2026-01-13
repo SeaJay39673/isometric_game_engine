@@ -58,6 +58,16 @@ impl InstanceMesh {
             instance_count: instances.len() as u32,
         }
     }
+
+    pub fn update_instance(&self, index: usize, data: &InstanceData, queue: &wgpu::Queue) {
+        let offset = (index * std::mem::size_of::<InstanceData>()) as wgpu::BufferAddress;
+        queue.write_buffer(&self.instance_buffer, offset, bytemuck::bytes_of(data));
+    }
+
+    pub fn update_instance_model(&self, index: usize, model: [[f32; 4]; 4], queue: &wgpu::Queue) {
+        let offset = (index * std::mem::size_of::<InstanceData>()) as wgpu::BufferAddress;
+        queue.write_buffer(&self.instance_buffer, offset, bytemuck::bytes_of(&model));
+    }
 }
 
 impl Renderable for InstanceMesh {

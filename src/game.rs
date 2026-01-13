@@ -4,6 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use ecs_core::spawn_entity;
 use winit::{
     application::ApplicationHandler,
     event::StartCause,
@@ -12,7 +13,11 @@ use winit::{
     window::Window,
 };
 
-use crate::{graphics::Graphics, mesh::ChunkMeshes};
+use crate::{
+    game_logic::{GameWorld, Position, Sprite, Velocity},
+    graphics::Graphics,
+    mesh::WorldMesh,
+};
 
 struct GameManager {
     last_frame: Instant,
@@ -24,7 +29,10 @@ struct GameManager {
     _fullscreen: bool,
 
     graphics: Option<Graphics>,
-    chunk_meshes: Option<ChunkMeshes>,
+    world_mesh: Option<WorldMesh>,
+
+    game_world: GameWorld,
+    player: ecs_core::Entity,
 
     _pressed_named_keys: HashSet<NamedKey>,
     _pressed_keys: HashSet<SmolStr>,
@@ -33,6 +41,29 @@ struct GameManager {
 
 impl GameManager {
     pub fn new() -> Self {
+        let mut game_world = match GameWorld::new() {
+            Ok(game_world) => game_world,
+            Err(e) => panic!("{e}"),
+        };
+        let player = spawn_entity!(
+            game_world.world,
+            (
+                Position {
+                    x: 6.0,
+                    y: 6.0,
+                    z: 0.0,
+                },
+                Velocity {
+                    x: -0.01,
+                    y: -0.01,
+                    z: 0.0,
+                },
+                Sprite {
+                    texture_name: String::from("grass")
+                }
+            )
+        );
+
         Self {
             last_frame: Instant::now(),
             target_frame_duration: Duration::from_secs_f64(1.0 / 120.0),
@@ -40,7 +71,11 @@ impl GameManager {
             window: None,
             _fullscreen: false,
             graphics: None,
-            chunk_meshes: None,
+            world_mesh: None,
+
+            game_world,
+            player,
+
             _pressed_named_keys: HashSet::new(),
             _pressed_keys: HashSet::new(),
             _cursor_location: (0.0, 0.0),
@@ -56,6 +91,21 @@ impl ApplicationHandler for GameManager {
     ) {
         let now = Instant::now();
         let next_frame_time = self.last_frame + self.target_frame_duration;
+
+        self.game_world
+            .world
+            .system::<(Position, Velocity, Option<Sprite>), _>(|entity, (pos, vel, sprite)| {
+                pos.x += vel.x;
+                pos.y += vel.y;
+                pos.z += vel.z;
+                if let (Some(world_mesh), Some(sprite)) = (&mut self.world_mesh, sprite) {
+                    world_mesh.update_entity(crate::game_logic::Entity {
+                        entity: entity.clone(),
+                        pos: [pos.x, pos.y, pos.z],
+                        texture_name: sprite.texture_name.clone(),
+                    });
+                }
+            });
 
         if now >= next_frame_time || matches!(cause, StartCause::Init) {
             if let Some(window) = &self.window {
@@ -87,17 +137,32 @@ impl ApplicationHandler for GameManager {
             }
         }
 
-        if self.chunk_meshes.is_none()
+        if self.world_mesh.is_none()
             && let Some(graphics) = &self.graphics
         {
-            match ChunkMeshes::new(graphics, 2, 8, 0.1) {
-                Ok(chunk_meshes) => self.chunk_meshes = Some(chunk_meshes),
+            match WorldMesh::new(graphics, 0.1) {
+                Ok(mut world_mesh) => {
+                    world_mesh.update_chunk(self.game_world.chunk.clone());
+                    self.game_world
+                        .world
+                        .entity_system::<(Position, Sprite), _>(
+                            &self.player,
+                            |entity, (pos, sprite)| {
+                                world_mesh.update_entity(crate::game_logic::Entity {
+                                    entity: entity.clone(),
+                                    pos: [pos.x, pos.y, pos.z],
+                                    texture_name: sprite.texture_name.clone(),
+                                })
+                            },
+                        );
+                    self.world_mesh = Some(world_mesh)
+                }
                 Err(e) => eprintln!("Error creating chunk meshes: {e}"),
             }
         }
 
         if self.graphics.is_some()
-            && self.chunk_meshes.is_some()
+            && self.world_mesh.is_some()
             && let Some(window) = &self.window
         {
             window.set_visible(true);
@@ -121,16 +186,19 @@ impl ApplicationHandler for GameManager {
                 ..
             } => {}
             RedrawRequested => {
-                if let (Some(chunk_meshes), Some(graphics)) =
-                    (&mut self.chunk_meshes, &mut self.graphics)
+                if let (Some(world_mesh), Some(graphics)) =
+                    (&mut self.world_mesh, &mut self.graphics)
                 {
                     let time_ms: u32 = self.start.elapsed().as_millis() as u32;
                     graphics.queue.write_buffer(
-                        &chunk_meshes.time_buffer,
+                        &world_mesh.time_buffer,
                         0,
                         bytemuck::bytes_of(&time_ms),
                     );
-                    if let Err(e) = graphics.render(Some(chunk_meshes)) {
+                    if let Err(e) = world_mesh.update(&graphics.device) {
+                        eprintln!("Error updating world mesh: {e}");
+                    }
+                    if let Err(e) = graphics.render(Some(world_mesh)) {
                         eprintln!("Error rendering graphics: {e}");
                     }
                 }

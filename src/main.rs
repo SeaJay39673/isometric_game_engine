@@ -2,6 +2,7 @@ use crate::game::Game;
 
 mod assets;
 mod game;
+mod game_logic;
 mod graphics;
 mod map;
 mod mesh;

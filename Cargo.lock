@@ -558,16 +558,6 @@ name = "ecs_core"
 version = "0.1.0"
 
 [[package]]
-name = "ecs_derive"
-version = "0.1.0"
-dependencies = [
- "ecs_core",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -939,7 +929,6 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "ecs_core",
- "ecs_derive",
  "glam",
  "image",
  "noise",

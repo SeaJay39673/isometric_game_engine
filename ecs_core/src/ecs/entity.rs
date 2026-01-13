@@ -1,12 +1,14 @@
-#[derive(Clone, PartialEq, Eq)]
+type EntityId = u32;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Entity {
-    id: u32,
-    generation: u32,
+    id: EntityId,
+    generation: EntityId,
 }
 
 pub struct EntityRegistry {
     free: Vec<Entity>,
-    next: u32,
+    next: EntityId,
 }
 
 impl EntityRegistry {
@@ -19,8 +21,14 @@ impl EntityRegistry {
 
     pub fn new_entity(&mut self) -> Entity {
         if let Some(mut free) = self.free.pop() {
-            free.generation += 1;
-            return free;
+            if free.generation != EntityId::MAX {
+                free.generation += 1;
+                return free;
+            }
+        }
+
+        if self.next == EntityId::MAX {
+            panic!("Maximum number of entities exceeded");
         }
 
         let id = self.next;
